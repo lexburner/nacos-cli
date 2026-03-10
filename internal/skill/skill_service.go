@@ -253,48 +253,8 @@ func (s *SkillService) getSkillWithValidation(skillName, outputDir string) error
 		}
 	}
 
-	// Download any additional configs not in resources array (e.g., markdown docs)
-	configList, err := s.client.ListConfigs("*", group, "", 1, 100)
-	if err == nil && configList != nil {
-		for _, config := range configList.PageItems {
-			// Skip already downloaded configs
-			if downloadedDataIDs[config.DataID] {
-				continue
-			}
-
-			// Try to parse as resource JSON
-			var resourceData map[string]interface{}
-			if err := json.Unmarshal([]byte(config.Content), &resourceData); err == nil {
-				// It's a JSON resource
-				if name, ok := resourceData["name"].(string); ok && name != "" {
-					content, ok := resourceData["content"].(string)
-					if !ok {
-						continue
-					}
-
-					resourceType, _ := resourceData["type"].(string)
-
-					// Determine file directory based on type
-					var fileDir string
-					if resourceType != "" {
-						fileDir = filepath.Join(skillDir, resourceType)
-					} else {
-						fileDir = skillDir
-					}
-
-					if err := os.MkdirAll(fileDir, 0755); err != nil {
-						continue
-					}
-
-					filePath := filepath.Join(fileDir, name)
-					os.WriteFile(filePath, []byte(content), 0644)
-				}
-			}
-		}
-	}
-
 	// Generate SKILL.md
-	if err := s.generateSkillMD(skillDir, &skill, resourceContents); err != nil {
+	if err := s.generateSkillMD(skillDir, &skill); err != nil {
 		return err
 	}
 
@@ -302,7 +262,7 @@ func (s *SkillService) getSkillWithValidation(skillName, outputDir string) error
 }
 
 // generateSkillMD creates SKILL.md file
-func (s *SkillService) generateSkillMD(skillDir string, skill *Skill, resources map[string]map[string]interface{}) error {
+func (s *SkillService) generateSkillMD(skillDir string, skill *Skill) error {
 	var md strings.Builder
 
 	// YAML frontmatter
